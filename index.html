@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shopping Cart System</title>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --surface: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --primary: #4f46e5;
+      --primary-dark: #4338ca;
+      --danger: #dc2626;
+      --success: #16a34a;
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    /* ---------- Header ---------- */
+    header {
+      background: var(--primary);
+      color: #fff;
+      padding: 18px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 { font-size: 1.4rem; letter-spacing: 0.5px; }
+    .cart-badge {
+      background: #fff;
+      color: var(--primary);
+      font-weight: 600;
+      padding: 4px 14px;
+      border-radius: 999px;
+      font-size: 0.9rem;
+    }
+
+    /* ---------- Layout ---------- */
+    main {
+      max-width: 1200px;
+      margin: 24px auto;
+      padding: 0 16px;
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+
+    section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    section h2 { font-size: 1.15rem; margin-bottom: 16px; }
+
+    /* ---------- Products ---------- */
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 14px;
+    }
+    .product-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .product-card h3 { font-size: 1rem; }
+    .product-card .price { font-weight: 700; color: var(--primary); font-size: 1.1rem; }
+    .product-card .stock { font-size: 0.82rem; color: var(--muted); }
+    .product-card .stock.low { color: var(--danger); }
+    .add-row { display: flex; gap: 8px; margin-top: auto; padding-top: 8px; }
+    .add-row input { width: 60px; }
+
+    /* ---------- Form controls ---------- */
+    input[type="number"], input[type="text"] {
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-family: inherit;
+    }
+    input:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      font-family: inherit;
+      background: var(--primary);
+      color: #fff;
+      transition: background 0.15s;
+    }
+    button:hover { background: var(--primary-dark); }
+    button:disabled { background: #c7c9d1; cursor: not-allowed; }
+    button.ghost { background: transparent; color: var(--danger); padding: 4px 8px; }
+    button.ghost:hover { background: #fee2e2; }
+    button.full { width: 100%; padding: 11px; font-size: 1rem; }
+    button.secondary { background: #e5e7eb; color: var(--text); }
+    button.secondary:hover { background: #d1d5db; }
+
+    /* ---------- Cart ---------- */
+    .empty { color: var(--muted); text-align: center; padding: 24px 0; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { padding: 8px 4px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; }
+    td.num, th.num { text-align: right; }
+    .qty-input { width: 56px; }
+
+    .coupon-row { display: flex; gap: 8px; margin: 16px 0; }
+    .coupon-row input { flex: 1; text-transform: uppercase; }
+
+    .totals { margin-bottom: 16px; }
+    .totals div { display: flex; justify-content: space-between; padding: 4px 0; font-size: 0.95rem; }
+    .totals .discount { color: var(--success); }
+    .totals .grand {
+      font-size: 1.15rem;
+      font-weight: 700;
+      border-top: 2px solid var(--border);
+      margin-top: 6px;
+      padding-top: 10px;
+    }
+
+    /* ---------- Toast ---------- */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #1f2937;
+      color: #fff;
+      padding: 12px 22px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s, transform 0.25s;
+      z-index: 20;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.error { background: var(--danger); }
+
+    /* ---------- Modal ---------- */
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 10;
+    }
+    .modal.open { display: flex; }
+    .modal-box {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 24px;
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal-box h2 { margin-bottom: 14px; }
+    .modal-box label { display: block; margin-bottom: 6px; font-weight: 600; }
+    .modal-box input[type="text"] { width: 100%; margin-bottom: 16px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+    .bill-customer { margin-bottom: 10px; color: var(--muted); }
+    .thanks { text-align: center; margin-top: 16px; font-weight: 600; color: var(--success); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>🛒 Shopping Cart System</h1>
+    <span class="cart-badge" id="cartBadge">0 items</span>
+  </header>
+
+  <main>
+    <!-- Product catalog -->
+    <section>
+      <h2>Available Products</h2>
+      <div class="product-grid" id="productGrid"></div>
+    </section>
+
+    <!-- Cart -->
+    <section>
+      <h2>Your Cart</h2>
+      <div id="cartContent"></div>
+    </section>
+  </main>
+
+  <!-- Checkout / bill modal -->
+  <div class="modal" id="checkoutModal">
+    <div class="modal-box" id="modalBody"></div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+    /* =====================================================
+       Data model (mirrors Product, CartItem, ShoppingCart)
+       ===================================================== */
+    const GST_RATE = 0.18;
+    const COUPONS = { SAVE10: 0.10, SAVE20: 0.20 };
+
+    const catalog = [
+      { id: 1, name: "Laptop",               price: 55000, stock: 5  },
+      { id: 2, name: "Smartphone",           price: 20000, stock: 10 },
+      { id: 3, name: "Headphones",           price: 1500,  stock: 20 },
+      { id: 4, name: "Keyboard",             price: 800,   stock: 15 },
+      { id: 5, name: "Mouse",                price: 500,   stock: 25 },
+      { id: 6, name: "Backpack",             price: 1200,  stock: 12 },
+      { id: 7, name: "Water Bottle",         price: 250,   stock: 40 },
+      { id: 8, name: "Notebook (Pack of 5)", price: 300,   stock: 50 }
+    ];
+
+    const cart = { items: [], couponCode: "", discountRate: 0 };
+
+    /* ---------- Helpers ---------- */
+    const $ = (id) => document.getElementById(id);
+    const money = (n) => "₹" + n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const findProduct = (id) => catalog.find((p) => p.id === id);
+    const findItem = (id) => cart.items.find((i) => i.product.id === id);
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    let toastTimer;
+    function toast(message, isError = false) {
+      const el = $("toast");
+      el.textContent = message;
+      el.className = "show" + (isError ? " error" : "");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => (el.className = ""), 2600);
+    }
+
+    /* ---------- Billing ---------- */
+    const getSubtotal = () => cart.items.reduce((s, i) => s + i.product.price * i.quantity, 0);
+    const getDiscount = () => getSubtotal() * cart.discountRate;
+    const getGst      = () => (getSubtotal() - getDiscount()) * GST_RATE;
+    const getTotal    = () => getSubtotal() - getDiscount() + getGst();
+
+    /* =====================================================
+       Cart operations (each returns [message, success])
+       ===================================================== */
+    function addItem(product, quantity) {
+      if (!Number.isInteger(quantity) || quantity <= 0) return ["Quantity must be at least 1.", false];
+
+      const existing = findItem(product.id);
+      const alreadyInCart = existing ? existing.quantity : 0;
+      if (alreadyInCart + quantity > product.stock) {
+        return [`Not enough stock. Only ${product.stock} unit(s) of ${product.name} available.`, false];
+      }
+      if (existing) existing.quantity += quantity;
+      else cart.items.push({ product, quantity });
+
+      return [`${quantity} x ${product.name} added to cart.`, true];
+    }
+
+    function updateQuantity(productId, newQuantity) {
+      const item = findItem(productId);
+      if (!item) return ["That product is not in your cart.", false];
+      if (!Number.isInteger(newQuantity) || newQuantity <= 0) {
+        return ["Quantity must be at least 1. Use Remove to delete it.", false];
+      }
+      if (newQuantity > item.product.stock) {
+        return [`Not enough stock. Only ${item.product.stock} unit(s) available.`, false];
+      }
+      item.quantity = newQuantity;
+      return [`Quantity updated for ${item.product.name}.`, true];
+    }
+
+    function removeItem(productId) {
+      const item = findItem(productId);
+      if (!item) return ["That product is not in your cart.", false];
+      cart.items = cart.items.filter((i) => i !== item);
+      return [`${item.product.name} removed from cart.`, true];
+    }
+
+    function applyCoupon(code) {
+      const c = code.trim().toUpperCase();
+      if (COUPONS[c]) {
+        cart.couponCode = c;
+        cart.discountRate = COUPONS[c];
+        return [`Coupon ${c} applied: ${COUPONS[c] * 100}% discount.`, true];
+      }
+      return ["Invalid coupon code.", false];
+    }
+
+    /* =====================================================
+       Rendering
+       ===================================================== */
+    function renderProducts() {
+      $("productGrid").innerHTML = catalog.map((p) => `
+        <div class="product-card">
+          <h3>${escapeHtml(p.name)}</h3>
+          <span class="price">${money(p.price)}</span>
+          <span class="stock ${p.stock <= 5 ? "low" : ""}">Stock: ${p.stock}</span>
+          <div class="add-row">
+            <input type="number" id="qty-${p.id}" value="1" min="1" aria-label="Quantity for ${escapeHtml(p.name)}">
+            <button onclick="handleAdd(${p.id})">Add to Cart</button>
+          </div>
+        </div>`).join("");
+    }
+
+    function totalsHtml() {
+      return `
+        <div class="totals">
+          <div><span>Subtotal</span><span>${money(getSubtotal())}</span></div>
+          ${cart.discountRate > 0 ? `
+            <div class="discount">
+              <span>Discount (${cart.couponCode}, ${Math.round(cart.discountRate * 100)}%)</span>
+              <span>-${money(getDiscount())}</span>
+            </div>` : ""}
+          <div><span>GST (18%)</span><span>${money(getGst())}</span></div>
+          <div class="grand"><span>Total Payable</span><span>${money(getTotal())}</span></div>
+        </div>`;
+    }
+
+    function itemsTableHtml(editable) {
+      const rows = cart.items.map((i) => {
+        const p = i.product;
+        return `
+          <tr>
+            <td>${escapeHtml(p.name)}</td>
+            <td class="num">${money(p.price)}</td>
+            <td class="num">${editable
+              ? `<input type="number" class="qty-input" min="1" value="${i.quantity}" onchange="handleUpdate(${p.id}, this.value)">`
+              : i.quantity}</td>
+            <td class="num">${money(i.quantity * p.price)}</td>
+            ${editable ? `<td><button class="ghost" onclick="handleRemove(${p.id})" title="Remove">✕</button></td>` : ""}
+          </tr>`;
+      }).join("");
+
+      return `
+        <table>
+          <thead>
+            <tr>
+              <th>Product</th><th class="num">Price</th><th class="num">Qty</th><th class="num">Subtotal</th>
+              ${editable ? "<th></th>" : ""}
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    }
+
+    function renderCart() {
+      const count = cart.items.reduce((s, i) => s + i.quantity, 0);
+      $("cartBadge").textContent = `${count} item${count === 1 ? "" : "s"}`;
+
+      if (cart.items.length === 0) {
+        $("cartContent").innerHTML = `<p class="empty">Your cart is empty.</p>`;
+        return;
+      }
+
+      $("cartContent").innerHTML = `
+        ${itemsTableHtml(true)}
+        <div class="coupon-row">
+          <input type="text" id="couponInput" placeholder="Coupon (SAVE10 / SAVE20)" value="${cart.couponCode}">
+          <button class="secondary" onclick="handleCoupon()">Apply</button>
+        </div>
+        ${totalsHtml()}
+        <button class="full" onclick="openCheckout()">Checkout</button>`;
+    }
+
+    function renderAll() {
+      renderProducts();
+      renderCart();
+    }
+
+    /* =====================================================
+       Event handlers
+       ===================================================== */
+    function showResult([message, ok]) {
+      toast(message, !ok);
+      return ok;
+    }
+
+    function handleAdd(id) {
+      const qty = parseInt($("qty-" + id).value, 10);
+      if (showResult(addItem(findProduct(id), qty))) renderCart();
+    }
+
+    function handleUpdate(id, value) {
+      showResult(updateQuantity(id, parseInt(value, 10)));
+      renderCart(); // re-render to reset the field if the update was rejected
+    }
+
+    function handleRemove(id) {
+      showResult(removeItem(id));
+      renderCart();
+    }
+
+    function handleCoupon() {
+      showResult(applyCoupon($("couponInput").value));
+      renderCart();
+    }
+
+    /* ---------- Checkout ---------- */
+    function openCheckout() {
+      $("modalBody").innerHTML = `
+        <h2>Checkout</h2>
+        <label for="customerName">Customer name</label>
+        <input type="text" id="customerName" placeholder="Enter your name">
+        <div class="modal-actions">
+          <button class="secondary" onclick="closeModal()">Cancel</button>
+          <button onclick="confirmCheckout()">Place Order</button>
+        </div>`;
+      $("checkoutModal").classList.add("open");
+      $("customerName").focus();
+    }
+
+    function confirmCheckout() {
+      const name = $("customerName").value.trim() || "Customer";
+
+      // Build the bill first, then update stock and clear the cart
+      $("modalBody").innerHTML = `
+        <h2>Final Bill</h2>
+        <p class="bill-customer">Customer: <strong>${escapeHtml(name)}</strong></p>
+        ${itemsTableHtml(false)}
+        <div style="margin-top:14px">${totalsHtml()}</div>
+        <p class="thanks">Thank you for your purchase, ${escapeHtml(name)}!</p>
+        <div class="modal-actions"><button onclick="closeModal()">Continue Shopping</button></div>`;
+
+      cart.items.forEach((i) => (i.product.stock -= i.quantity));
+      cart.items = [];
+      cart.couponCode = "";
+      cart.discountRate = 0;
+      renderAll();
+    }
+
+    function closeModal() {
+      $("checkoutModal").classList.remove("open");
+    }
+
+    $("checkoutModal").addEventListener("click", (e) => {
+      if (e.target.id === "checkoutModal") closeModal();
+    });
+
+    /* ---------- Start ---------- */
+    renderAll();
+  </script>
+</body>
+</html>
